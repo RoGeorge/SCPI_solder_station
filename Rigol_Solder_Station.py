@@ -1,15 +1,12 @@
 __author__ = 'RoGeorge'
 #
 # TODO: Port for Linux
-# TODO: Add command line parameters for IP, file path and file format
+# TODO: Add command line parameters for instruments IPs
 # TODO: Add GUI
-# TODO: Add browse and custom filename selection
 # TODO: Create executable distributions
 #
-import telnetlib_receive_all
+import telnetlib
 import time
-import Image
-import StringIO
 import sys
 import os
 
@@ -26,11 +23,6 @@ max_volt = float(10)
 # Rigol/LXI specific constants
 port = 5555
 
-expected_len = 1152068
-TMC_header_len = 11
-terminator_len = 3
-
-big_wait = 10
 small_wait = 1
 
 company = 0
@@ -43,148 +35,131 @@ script_name = os.path.basename(sys.argv[0])
 # Print usage
 print
 print "Usage:"
-print "    " + script_name + " [oscilloscope_IP [save_path [PNG | BMP]]]"
-print
-print "Usage examples:"
-print "    " + script_name
-print "    " + script_name + " 192.168.1.3"
-print "    " + script_name + " 192.168.1.3 my_place_for_osc_captures"
-print "    " + script_name + " 192.168.1.3 my_place_for_osc_captures BMP"
-print
-print "This program capture the image displayed"
-print "    by a Rigol DS1000Z series oscilloscope, then save it on the computer"
-print "    as a PNG or BMP file with a timestamp in the file name."
-print
-print "    The program is using LXI protocol, so the computer"
-print "    must have LAN connection with the oscilloscope."
-print "    USB and/or GPIB connections are not used by this software."
-print
-print "    No VISA, IVI or Rigol drivers are needed."
-print
+print script_name
 
-# Create/check if 'path' exists
+def open_check(instrument, IP):
+	# Check network response (ping) for oscilloscope
+	response = os.system("ping -n 1 " + IP + " > nul")
+	if response != 0:
+		print
+		print "No response pinging " + IP
+		print "Check network cables and settings."
+		print "You should be able to ping the", instrument
 
+	# Open a telnet session for oscilloscope
+	tn = telnetlib.Telnet(IP, port)
+	tn.write("*idn?")                       # ask for instrument ID
+	instrument_id = tn.read_until("\n", 1)
 
-# Check network response (ping)
-response = os.system("ping -n 1 " + IP_DS1104Z + " > nul")
-if response != 0:
-	print
-	print "No response pinging " + IP_DS1104Z
-	print "Check network cables and settings."
-	print "You should be able to ping the oscilloscope."
+	# # Check if oscilloscope is set to accept LAN commands
+	# if instrument_id == "command error":
+	# 	print instrument_id
+	# 	print "Check the", instrument, "settings."
+	# 	print "Utility -> IO Setting -> RemoteIO -> LAN must be ON"
+	# 	sys.exit("ERROR")
+	#
+	# Check if instrument is indeed a Rigol DS1000Z series
+	# id_fields = instrument_id.split(",")
+	# print instrument
+	# print IP
+	# print id_fields[company]
+	# print id_fields[model]
+	# if (id_fields[company] != "RIGOL TECHNOLOGIES") or \
+	# 	(id_fields[model][:3] != "DS1") or (id_fields[model][-1] != "Z"):
+	# 	print
+	# 	print "ERROR: No Rigol from series DS1000Z found at ", IP_DS1104Z
+	# 	sys.exit("ERROR")
 
-# Open a modified telnet session
-# The default telnetlib drops 0x00 characters,
-#   so a modified library 'telnetlib_receive_all' is used instead
-tn = telnetlib_receive_all.Telnet(IP_DS1104Z, port)
-tn.write("*idn?")                       # ask for instrument ID
-instrument_id = tn.read_until("\n", 1)
-
-# Check if instrument is set to accept LAN commands
-if instrument_id == "command error":
+	print instrument, "ID:"
 	print instrument_id
-	print "Check the oscilloscope settings."
-	print "Utility -> IO Setting -> RemoteIO -> LAN must be ON"
-	sys.exit("ERROR")
 
-# Check if instrument is indeed a Rigol DS1000Z series
-id_fields = instrument_id.split(",")
-if (id_fields[company] != "RIGOL TECHNOLOGIES") or \
-	(id_fields[model][:3] != "DS1") or (id_fields[model][-1] != "Z"):
-	print
-	print "ERROR: No Rigol from series DS1000Z found at ", IP_DS1104Z
-	sys.exit("ERROR")
+	return tn
 
-print "Instrument ID:"
-print instrument_id
+tn_oscilloscope = open_check("oscilloscope", IP_DS1104Z)
+# tn_power_source = open_check("power source", IP_DP832)
 
-# Prepare filename as C:\MODEL_SERIAL_YYYY-MM-DD_HH.MM.SS
-timestamp = time.strftime("%Y-%m-%d_%H.%M.%S", time.localtime())
-filename = path_to_save + id_fields[model] + "_" + id_fields[serial] + "_" + timestamp
-
-# Ask for an oscilloscope display print screen
-tn.write("display:data?")
-print "Receiving..."
-buff = tn.read_until("\n", big_wait)
-
-# Just in case the transfer did not complete in the expected time
-while len(buff) < expected_len:
-	tmp = tn.read_until("\n", small_wait)
-	if len(tmp) == 0:
-		break
-	buff += tmp
-
-# Strip TMC Blockheader and terminator bytes
-buff = buff[TMC_header_len:-terminator_len]
-
-# Save as PNG
-im = Image.open(StringIO.StringIO(buff))
-im.save(filename + ".png", "PNG")
-print "Saved file:", filename + ".png"
-
-# Save as BMP
-# scr_file = open(filename + ".bmp", "wb")
-# scr_file.write(buff)
-# scr_file.close()
-
-tn.close()
+# Set the oscilloscope
+# tn_oscilloscope.write("MEASure:ITEM VAVG, CHANnel4")
+# tn_oscilloscope.write("*opc?")                     # operation(s) completed ?
+# tn_oscilloscope.read_until("\n", 1)                # wait max 1s for an answer
+print "step 1"
+# tn.write("display:data?")
+# print "Receiving..."
+# buff = tn.read_until("\n", small_wait)
+#
+# # Just in case the transfer did not complete in the expected time
+# if buff[-1] != '\n':
+# 	print "Error: Answer from instrument took longer then", small_wait, "second(s)."
+# 	sys.exit("ERROR")
+#
+# # Set the power source
 
 
-
-
-
-
-
-
-
-
-
-__author__ = 'RoGeorge'
-
-import telnetlib
-import time
-import random
-
-IP_DP832 = "192.168.1.4"
-port = 5555
-
-min_volt = float(0)
-max_volt = float(10)
-mV = 1000
-ms = 1000
-steps_per_volt = 10
-
-tn = telnetlib.Telnet(IP_DP832, port)
-tn.write("*idn?")                       # interrogate instrument ID
-print tn.read_until("\n", 1)
-
-# TODO - quit if no answer from instrument
-
-tn.write("output:state ch1, on")        # power on ch1
-tn.write("*opc?")
-tn.read_until("\n", 1)
-
+# Temperature control loop
+steps = 100
+print steps
 t1 = time.time()
+for i in range(0, steps):
+	# Read thermocouple
+	tn_oscilloscope.write("MEASure:ITEM? VAVG, CHANnel4")
+	buff = tn_oscilloscope.read_until("\n", small_wait)
+	print buff
 
-for i in range(int(min_volt*mV), int(max_volt*mV), mV/steps_per_volt):
-	# tn.write("volt " + str(float(i)/mV))  # set ch1 output voltage
-	v = str(float(random.randint(min_volt*mV, max_volt*mV))/mV)
-	print v
-	tn.write("volt " + v)  # set ch1 output voltage
-	tn.write("*opc?")                     # operation(s) completed ?
-	tn.read_until("\n", 1)                # wait max 1s for an answer
+	# Compute running average
+	# Convert mV to *C
+	# Compute next output voltage
+	# Set new voltage
+	# Loop until a stop request encountered
 
-v = "5.000"
-print v
-tn.write("volt " + v)  # set ch1 output voltage
-tn.write("*opc?")                     # operation(s) completed ?
-tn.read_until("\n", 1)                # wait max 1s for an answer
 
 t2 = time.time()
+ms_per_step = (t2 - t1)/steps * 1000
+print "ms/step =", ms_per_step
+# Close telnet sessions
+# tn_power_source.close()
+tn_oscilloscope.close()
 
-total_steps = (max_volt - min_volt) * steps_per_volt
-total_time = (t2 - t1) * ms
-print "The average execution time for a telnet LXI command was",
-print "%.3f" % (total_time / total_steps), "ms."
 
-tn.close()
+# IP_DP832 = "192.168.1.4"
+# port = 5555
+#
+# min_volt = float(0)
+# max_volt = float(10)
+# mV = 1000
+# ms = 1000
+# steps_per_volt = 10
+#
+# tn = telnetlib.Telnet(IP_DP832, port)
+# tn.write("*idn?")                       # interrogate instrument ID
+# print tn.read_until("\n", 1)
+#
+# # TODO - quit if no answer from instrument
+#
+# tn.write("output:state ch1, on")        # power on ch1
+# tn.write("*opc?")
+# tn.read_until("\n", 1)
+#
+# t1 = time.time()
+#
+# for i in range(int(min_volt*mV), int(max_volt*mV), mV/steps_per_volt):
+# 	# tn.write("volt " + str(float(i)/mV))  # set ch1 output voltage
+# 	v = str(float(random.randint(min_volt*mV, max_volt*mV))/mV)
+# 	print v
+# 	tn.write("volt " + v)  # set ch1 output voltage
+# 	tn.write("*opc?")                     # operation(s) completed ?
+# 	tn.read_until("\n", 1)                # wait max 1s for an answer
+#
+# v = "5.000"
+# print v
+# tn.write("volt " + v)  # set ch1 output voltage
+# tn.write("*opc?")                     # operation(s) completed ?
+# tn.read_until("\n", 1)                # wait max 1s for an answer
+#
+# t2 = time.time()
+#
+# total_steps = (max_volt - min_volt) * steps_per_volt
+# total_time = (t2 - t1) * ms
+# print "The average execution time for a telnet LXI command was",
+# print "%.3f" % (total_time / total_steps), "ms."
+#
+# tn.close()
