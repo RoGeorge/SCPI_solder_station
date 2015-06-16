@@ -56,11 +56,12 @@ def connect_verify(instrument, IP, port):
 
 
 def command(tn, SCPI):
-	tn.write(SCPI)
 	response = ""
 	while response != "1\n":
 		tn.write("*OPC?")                    # operation(s) completed ?
 		response = tn.read_until("\n", 1)    # wait max 1s for an answer
+
+	tn.write(SCPI)
 
 
 def init_oscilloscope(tn):

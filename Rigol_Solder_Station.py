@@ -60,19 +60,15 @@ command(tn_power_source, "SOURce2:VOLTage " + str(voltage))
 while True:
 	t1 = time()
 
-	sleep(0.2)
-
 	# Read thermocouple
 	tn_oscilloscope.write("MEASure:ITEM? VAVG, CHANnel4")
 	buff = tn_oscilloscope.read_until("\n", small_wait)
-	print buff,
 
 	if buff == "command error\n":
-		buff = "0.01"
+		buff = "0.01\n"
 
 	# Convert thermocouple voltage readings to *C
 	t = abs(int(1000000 * float(buff[:-1]))/1000.0)
-	print t, voltage
 
 	# Compute running average
 
@@ -85,9 +81,7 @@ while True:
 		voltage = 24
 
 	# Set new voltage
-	sir = "SOURce2:VOLTage " + "{0:.3f}".format(voltage)
-	print sir
-	command(tn_power_source, sir)
+	command(tn_power_source, "SOURce2:VOLTage " + "{0:.1f}".format(voltage))
 
 	# Loop until a stop request encountered
 
