@@ -57,14 +57,14 @@ command(tn_power_source, "SOURce2:VOLTage " + str(voltage))
 # Calibrate PID
 
 # Temperature control loop
+t1 = time()
 while True:
-	t1 = time()
-
 	# Read thermocouple
 	tn_oscilloscope.write("MEASure:ITEM? VAVG, CHANnel4")
 	buff = tn_oscilloscope.read_until("\n", small_wait)
 
-	if buff == "command error\n":
+	if buff[0] < "0" or buff[0] > "9":
+		print "bing !", buff
 		buff = "0.01\n"
 
 	# Convert thermocouple voltage readings to *C
@@ -87,6 +87,7 @@ while True:
 
 	t2 = time()
 	ms_per_step = (t2 - t1) * 1000
+	t1 = t2
 	print "ms/step =", ms_per_step
 
 # power off
