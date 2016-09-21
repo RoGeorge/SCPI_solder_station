@@ -152,13 +152,15 @@ while True:
 
     vGraph = '|.........................|'
     vIndex = 1 + int(0.5 + vOut)
-    tGraph = '|...............................|'
-    tIndex = 1 + int((t - 100)/10)
+    tGraph = '|..............................|'
+    if t > 100:
+        tIndex = 1 + int((t - 100)/10)
+    else:
+        tIndex = 1
     # display
-    print 'vHeater =', vGraph[:vIndex] + 'v' + vGraph[vIndex + 1:], \
-          '  tSet =', tSet, '*C  ', \
-          'tTip =', tGraph[:tIndex] + 't' + tGraph[tIndex + 1:], int(t), '*C', \
-        '   deltaTime =', int(deltaTime), 'ms'
+    print vGraph[:vIndex] + 'v' + vGraph[vIndex + 1:], \
+          tSet, '*C   t=', \
+          tGraph[:tIndex] + 't' + tGraph[tIndex + 1:], int(t), '*C'
 
     # Set new voltage
     command(tn_power_source, "SOURce1:VOLTage " + "{0:.3f}".format(vOut))
